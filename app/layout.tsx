@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import 'leaflet/dist/leaflet.css';
 import { Footer } from "./components/footer";
+import { DisasterAssistant } from "./components/disaster-assistant";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -90,6 +91,7 @@ export default function RootLayout({
       <body className="antialiased font-sans">
         {children}
         <Footer />
+        <DisasterAssistant />
       </body>
     </html>
   );
