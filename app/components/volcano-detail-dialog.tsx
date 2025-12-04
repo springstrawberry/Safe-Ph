@@ -69,8 +69,21 @@ export function VolcanoDetailDialog({ volcano, open, onOpenChange }: VolcanoDeta
 
       setLoadingDetails(true);
       try {
-        // Fetch details from the first source URL
-        const sourceUrl = volcano.sources[0].url;
+        // ALWAYS prioritize Smithsonian Global Volcanism Program source if available
+        let sourceUrl = volcano.sources[0].url; // Default to first source
+        
+        // Search for Smithsonian source (volcano.si.edu)
+        const smithsonianSource = volcano.sources.find(source => 
+          source.url.includes('volcano.si.edu')
+        );
+        
+        if (smithsonianSource) {
+          sourceUrl = smithsonianSource.url;
+          console.log("✅ Using Smithsonian GVP source:", sourceUrl);
+        } else {
+          console.log("ℹ️ No Smithsonian source found, using:", sourceUrl);
+        }
+        
         const res = await fetch(`/api/volcano-details?url=${encodeURIComponent(sourceUrl)}`);
         const data = await res.json();
         
@@ -244,23 +257,26 @@ export function VolcanoDetailDialog({ volcano, open, onOpenChange }: VolcanoDeta
               <div>
                 <h3 className="text-sm font-semibold text-gray-500 mb-3">🔗 Sources & References</h3>
                 <div className="space-y-2">
-                  {volcano.sources.map((source, index) => (
-                    <a
-                      key={index}
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 border rounded-lg hover:border-orange-300 hover:bg-orange-50/50 transition-all group"
-                    >
-                      <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-orange-600" />
-                      <span className="text-sm text-gray-700 group-hover:text-orange-600 font-medium flex-1">
-                        {source.id || `Source ${index + 1}`}
-                      </span>
-                      <svg className="w-4 h-4 text-gray-400 group-hover:text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </a>
-                  ))}
+                  {volcano.sources.map((source, index) => {
+                    const isSmithsonian = source.url.includes('volcano.si.edu');
+                    return (
+                      <a
+                        key={index}
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 p-3 border rounded-lg hover:border-orange-300 hover:bg-orange-50/50 transition-all group ${isSmithsonian ? 'border-blue-300 bg-blue-50/50' : ''}`}
+                      >
+                        <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-orange-600" />
+                        <span className="text-sm text-gray-700 group-hover:text-orange-600 font-medium flex-1">
+                          {source.id || `Source ${index + 1}`}
+                        </span>
+                        <svg className="w-4 h-4 text-gray-400 group-hover:text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             )}
