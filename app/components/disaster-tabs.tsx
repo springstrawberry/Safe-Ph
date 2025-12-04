@@ -20,8 +20,8 @@ const disasterTabs = [
     label: "Volcano Bulletin",
   },
   {
-    value: "tsunami-bulletin",
-    label: "Tsunami Bulletin",
+    value: "floods",
+    label: "Floods Bulletin",
   },
   {
     value: "landslide",
