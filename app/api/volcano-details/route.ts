@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       
       if (isVolcanoPhoto) {
         // Make absolute URLs
-        let absoluteUrl = src.startsWith('http') ? src : `https://volcano.si.edu${src}`;
+        const absoluteUrl = src.startsWith('http') ? src : `https://volcano.si.edu${src}`;
         
         // Remove duplicates
         if (!seenUrls.has(absoluteUrl)) {
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       while ((imgMatch = galleryImgRegex.exec(galleryHtml)) !== null) {
         const src = imgMatch[1];
         if (src.includes('.jpg') || src.includes('.jpeg') || src.includes('.png') || src.includes('.webp')) {
-          let absoluteUrl = src.startsWith('http') ? src : `https://volcano.si.edu${src}`;
+          const absoluteUrl = src.startsWith('http') ? src : `https://volcano.si.edu${src}`;
           if (!seenUrls.has(absoluteUrl)) {
             seenUrls.add(absoluteUrl);
             volcanoData.images.push(absoluteUrl);

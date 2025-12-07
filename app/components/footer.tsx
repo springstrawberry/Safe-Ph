@@ -6,12 +6,12 @@ export function Footer() {
         <span>
           Powered by{" "}
           <a 
-            href="https://earthquake.usgs.gov/" 
+            href="https://www.phivolcs.dost.gov.ph/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="hover:underline"
           >
-            USGS
+            PHIVOLCS
           </a>
         </span>
       </div>

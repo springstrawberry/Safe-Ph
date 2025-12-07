@@ -62,21 +62,29 @@ interface EarthquakeMarkersProps {
   onMonthYearChange?: (month: number, year: number, count: number) => void;
   onEarthquakeSelect?: (quake: Quake) => void;
   onQuakesLoaded?: (quakes: Quake[]) => void;
+  onLoadingChange?: (loading: boolean) => void;
   selectedDate: Date;
 }
 
-export default function EarthquakeMarkers({ onMonthYearChange, onEarthquakeSelect, onQuakesLoaded, selectedDate }: EarthquakeMarkersProps) {
+export default function EarthquakeMarkers({ onMonthYearChange, onEarthquakeSelect, onQuakesLoaded, onLoadingChange, selectedDate }: EarthquakeMarkersProps) {
   const [allQuakes, setAllQuakes] = useState<Quake[]>([]);
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [loading, setLoading] = useState(true);
   const map = useMap();
 
+  // Load earthquakes when selected date changes (fetch by month/year for speed)
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      if (onLoadingChange) onLoadingChange(true);
       try {
-        const res = await fetch("/api/earthquakes");
+        const selectedMonth = selectedDate.getMonth() + 1; // JavaScript months are 0-indexed
+        const selectedYear = selectedDate.getFullYear();
+        
+        // Fetch only the selected month/year for faster loading
+        const res = await fetch(`/api/earthquakes?month=${selectedMonth}&year=${selectedYear}`);
         const data = await res.json();
-        console.log("📍 Earthquake data loaded:", data.quakes?.length || 0, "total earthquakes");
+        console.log(`📍 Earthquake data loaded for ${selectedYear}-${selectedMonth.toString().padStart(2, '0')}:`, data.quakes?.length || 0, "earthquakes");
         
         const allData = data.quakes ?? [];
         setAllQuakes(allData);
@@ -85,19 +93,27 @@ export default function EarthquakeMarkers({ onMonthYearChange, onEarthquakeSelec
         console.error("❌ Failed to load quakes:", err);
       } finally {
         setLoading(false);
+        if (onLoadingChange) onLoadingChange(false);
       }
     }
     load();
-  }, [map]);
+  }, [selectedDate, map, onLoadingChange]);
 
-  // Filter earthquakes by selected date
+  // Use allQuakes directly since we're already fetching by month/year
   useEffect(() => {
     const selectedMonth = selectedDate.getMonth();
     const selectedYear = selectedDate.getFullYear();
     
+    // Filter to ensure we only show earthquakes from selected month/year
+    // (in case of any date mismatches)
     const filtered = allQuakes.filter((q) => {
-      const date = new Date(q.datetime);
-      return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+      try {
+        const date = new Date(q.datetime);
+        if (isNaN(date.getTime())) return false;
+        return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+      } catch {
+        return false;
+      }
     });
     
     setQuakes(filtered);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Activity, ArchiveX } from "lucide-react";
+import { Activity, ArchiveX, Loader2 } from "lucide-react";
 
 type Quake = {
   datetime: string;
@@ -18,6 +18,7 @@ interface EarthquakeListCardProps {
   selectedMonth: number;
   selectedYear: number;
   onSelectEarthquake: (quake: Quake) => void;
+  loading?: boolean;
 }
 
 // Get color based on magnitude
@@ -38,7 +39,7 @@ const formatMonthYear = (month: number, year: number): string => {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 };
 
-export function EarthquakeListCard({ earthquakes, selectedMonth, selectedYear, onSelectEarthquake }: EarthquakeListCardProps) {
+export function EarthquakeListCard({ earthquakes, selectedMonth, selectedYear, onSelectEarthquake, loading = false }: EarthquakeListCardProps) {
   const sortedQuakes = [...earthquakes].sort((a, b) => 
     new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
   );
@@ -51,14 +52,31 @@ export function EarthquakeListCard({ earthquakes, selectedMonth, selectedYear, o
             <Activity className="w-5 h-5" />
             <span>{formatMonthYear(selectedMonth, selectedYear)}</span>
           </div>
-          <span className="text-sm font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-full">
-            {earthquakes.length} events
-          </span>
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Loading...</span>
+            </div>
+          ) : (
+            <span className="text-sm font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+              {earthquakes.length} events
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       
       <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-4">
-          {earthquakes.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-10 h-10 mx-auto mb-4 text-red-600 animate-spin" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                Loading Earthquakes
+              </h3>
+              <p className="text-sm text-gray-500">
+                Fetching data for {formatMonthYear(selectedMonth, selectedYear)}...
+              </p>
+            </div>
+          ) : earthquakes.length === 0 ? (
             <div className="text-center py-12">
               <ArchiveX className="w-10 h-10 mx-auto mb-4 text-gray-500" />
               <h3 className="text-lg font-semibold text-gray-700 mb-2">
@@ -72,14 +90,20 @@ export function EarthquakeListCard({ earthquakes, selectedMonth, selectedYear, o
             <div className="space-y-2">
               {sortedQuakes.map((quake, index) => {
                 const date = new Date(quake.datetime);
-                const formattedDate = date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                });
-                const formattedTime = date.toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
+                const isValidDate = !isNaN(date.getTime());
+                
+                const formattedDate = isValidDate 
+                  ? date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "Invalid Date";
+                const formattedTime = isValidDate
+                  ? date.toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Invalid Time";
 
                 return (
                   <button
@@ -106,9 +130,9 @@ export function EarthquakeListCard({ earthquakes, selectedMonth, selectedYear, o
                           <span>•</span>
                           <span>🕒 {formattedTime}</span>
                         </div>
-                        {quake.depth !== undefined && (
+                        {quake.depth !== undefined && quake.depth !== null && (
                           <div className="text-xs text-gray-500 mt-1">
-                            🌊 Depth: {quake.depth.toFixed(1)} km
+                            🌊 Depth: {typeof quake.depth === 'number' ? quake.depth.toFixed(1) : quake.depth} km
                           </div>
                         )}
                       </div>

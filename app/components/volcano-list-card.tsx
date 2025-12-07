@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Flame, ArchiveX } from "lucide-react";
+import { Flame, ArchiveX, Loader2 } from "lucide-react";
 
 type Volcano = {
   id: string;
@@ -28,9 +28,10 @@ interface VolcanoListCardProps {
   volcanoes: Volcano[];
   selectedYear: number;
   onSelectVolcano: (volcano: Volcano) => void;
+  loading?: boolean;
 }
 
-export function VolcanoListCard({ volcanoes, selectedYear, onSelectVolcano }: VolcanoListCardProps) {
+export function VolcanoListCard({ volcanoes, selectedYear, onSelectVolcano, loading = false }: VolcanoListCardProps) {
   const sortedVolcanoes = [...volcanoes].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -43,14 +44,31 @@ export function VolcanoListCard({ volcanoes, selectedYear, onSelectVolcano }: Vo
             <Flame className="w-5 h-5 text-orange-600" />
             <span>{selectedYear}</span>
           </div>
-          <span className="text-sm font-semibold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
-            {volcanoes.length} activities
-          </span>
+          {loading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Loading...</span>
+            </div>
+          ) : (
+            <span className="text-sm font-semibold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+              {volcanoes.length} activities
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       
       <CardContent className="flex-1 min-h-0 overflow-y-auto scrollbar-hide py-4">
-          {volcanoes.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-10 h-10 mx-auto mb-4 text-orange-600 animate-spin" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                Loading Volcanic Activity
+              </h3>
+              <p className="text-sm text-gray-500">
+                Fetching data for {selectedYear}...
+              </p>
+            </div>
+          ) : volcanoes.length === 0 ? (
             <div className="text-center py-12">
               <ArchiveX className="w-10 h-10 mx-auto mb-4 text-gray-500" />
               <h3 className="text-lg font-semibold text-gray-700 mb-2">

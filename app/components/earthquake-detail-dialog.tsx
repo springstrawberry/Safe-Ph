@@ -50,16 +50,22 @@ export function EarthquakeDetailDialog({ earthquake, open, onOpenChange }: Earth
   if (!earthquake) return null;
 
   const date = new Date(earthquake.datetime);
-  const formattedDate = date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const formattedTime = date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  const isValidDate = !isNaN(date.getTime());
+  
+  const formattedDate = isValidDate
+    ? date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Invalid Date";
+  const formattedTime = isValidDate
+    ? date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : "Invalid Time";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -141,12 +147,12 @@ export function EarthquakeDetailDialog({ earthquake, open, onOpenChange }: Earth
             {earthquake.source && (
               <div className="pt-4 border-t">
                 <a
-                  href={earthquake.source}
+                  href="https://earthquake.phivolcs.dost.gov.ph"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
                 >
-                  View detailed report on USGS
+                  View detailed report on PHIVOLCS
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>

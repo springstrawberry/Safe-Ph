@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "Safe PH - Philippines Disaster Monitoring & Earthquake Tracker",
     template: "%s | Safe PH"
   },
-  description: "Real-time earthquake monitoring and disaster tracking system for the Philippines. Track seismic activities, view earthquake history, and stay informed about natural disasters in the Philippines. Powered by USGS data.",
+  description: "Real-time earthquake monitoring and disaster tracking system for the Philippines. Track seismic activities, view earthquake history, and stay informed about natural disasters in the Philippines. Powered by PHIVOLCS data.",
   keywords: [
     "Philippines earthquake",
     "PH disaster alerts",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     "disaster monitoring Philippines",
     "seismic activity Philippines",
     "Philippine earthquake map",
-    "USGS Philippines",
+    "PHIVOLCS Philippines",
     "natural disaster Philippines",
     "earthquake alert Philippines",
     "Safe PH",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     locale: "en_PH",
     url: "https://safe-ph.vercel.app",
     title: "Safe PH - Philippines Disaster Monitoring & Earthquake Tracker",
-    description: "Real-time earthquake monitoring and disaster tracking for the Philippines. Stay informed about seismic activities with live USGS data.",
+    description: "Real-time earthquake monitoring and disaster tracking for the Philippines. Stay informed about seismic activities with live PHIVOLCS data.",
     siteName: "Safe PH",
     images: [
       {
@@ -88,7 +88,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={poppins.variable}>
-      <body className="antialiased font-sans">
+      <body className="antialiased font-sans" suppressHydrationWarning>
         {children}
         <Footer />
         <DisasterAssistant />

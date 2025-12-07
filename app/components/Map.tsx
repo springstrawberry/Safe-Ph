@@ -71,14 +71,16 @@ function EarthquakeMarkers({
   onMonthYearChange,
   onEarthquakeSelect,
   onQuakesLoaded,
+  onLoadingChange,
   selectedDate
 }: { 
   onMonthYearChange: (month: number, year: number, count: number) => void;
   onEarthquakeSelect: (quake: Quake) => void;
   onQuakesLoaded: (quakes: Quake[]) => void;
+  onLoadingChange: (loading: boolean) => void;
   selectedDate: Date;
 }) {
-  return <EarthquakeMarkersComponent onMonthYearChange={onMonthYearChange} onEarthquakeSelect={onEarthquakeSelect} onQuakesLoaded={onQuakesLoaded} selectedDate={selectedDate} />;
+  return <EarthquakeMarkersComponent onMonthYearChange={onMonthYearChange} onEarthquakeSelect={onEarthquakeSelect} onQuakesLoaded={onQuakesLoaded} onLoadingChange={onLoadingChange} selectedDate={selectedDate} />;
 }
 
 function VolcanoMarkers({ 
@@ -111,27 +113,27 @@ interface MapProps {
 
 const Map = ({ tabId }: MapProps) => {
   const [mounted, setMounted] = useState(false);
-  const now = new Date();
-  const [selectedDate, setSelectedDate] = useState<Date>(now);
-  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  // Use lazy initializer to prevent hydration mismatch
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
   const [earthquakeCount, setEarthquakeCount] = useState<number>(0);
   const [selectedEarthquake, setSelectedEarthquake] = useState<Quake | null>(null);
   const [currentMonthQuakes, setCurrentMonthQuakes] = useState<Quake[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [allQuakes, setAllQuakes] = useState<Quake[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, will be updated by EarthquakeMarkers
   
   // Volcano state
   const [selectedVolcano, setSelectedVolcano] = useState<Volcano | null>(null);
   const [allVolcanoes, setAllVolcanoes] = useState<Volcano[]>([]);
   const [volcanoDialogOpen, setVolcanoDialogOpen] = useState(false);
   const [volcanoLoading, setVolcanoLoading] = useState(true);
-  const [selectedVolcanoYear, setSelectedVolcanoYear] = useState<number>(now.getFullYear());
+  const [selectedVolcanoYear, setSelectedVolcanoYear] = useState<number>(() => new Date().getFullYear());
   const [volcanoActivityCount, setVolcanoActivityCount] = useState<number>(0);
   const [volcanoYearData, setVolcanoYearData] = useState<Volcano[]>([]);
-  const [selectedVolcanoDate, setSelectedVolcanoDate] = useState<Date>(now);
+  const [selectedVolcanoDate, setSelectedVolcanoDate] = useState<Date>(() => new Date());
   const [isVolcanoPopoverOpen, setIsVolcanoPopoverOpen] = useState(false);
   
   // Dynamic position based on data - defaults to center Philippines
@@ -143,36 +145,8 @@ const Map = ({ tabId }: MapProps) => {
     setMounted(true);
   }, []);
 
-  // Load all earthquakes for date range calculation
-  useEffect(() => {
-    if (tabId === "latest-earthquake") {
-      setLoading(true);
-      fetch("/api/earthquakes")
-        .then((res) => res.json())
-        .then((data) => {
-          const quakes = data.quakes ?? [];
-          setAllQuakes(quakes);
-          
-          // Find the most recent earthquake date and set it as default
-          if (quakes.length > 0) {
-            const sorted = [...quakes].sort((a: Quake, b: Quake) => 
-              new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
-            );
-            const mostRecent = new Date(sorted[0].datetime);
-            setSelectedDate(mostRecent);
-            
-            // Set map center to most recent earthquake
-            setMapCenter([sorted[0].lat, sorted[0].lon]);
-          }
-          
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("Failed to load earthquakes:", err);
-          setLoading(false);
-        });
-    }
-  }, [tabId]);
+  // Note: Earthquake data is now loaded by EarthquakeMarkers component
+  // This useEffect is removed to avoid duplicate fetching
 
   // Load all volcanoes
   useEffect(() => {
@@ -217,6 +191,12 @@ const Map = ({ tabId }: MapProps) => {
     setSelectedMonth(month);
     setSelectedYear(year);
     setEarthquakeCount(count);
+    // Loading is handled by EarthquakeMarkers component
+  }, []);
+  
+  // Handle loading state from EarthquakeMarkers
+  const handleLoadingChange = useCallback((isLoading: boolean) => {
+    setLoading(isLoading);
   }, []);
 
   const handleVolcanoSelect = useCallback((volcano: Volcano) => {
@@ -271,6 +251,7 @@ const Map = ({ tabId }: MapProps) => {
               onMonthYearChange={handleMonthYearChange}
               onEarthquakeSelect={handleEarthquakeSelect}
               onQuakesLoaded={handleQuakesLoaded}
+              onLoadingChange={handleLoadingChange}
               selectedDate={selectedDate}
             />
           )}
@@ -285,16 +266,7 @@ const Map = ({ tabId }: MapProps) => {
             />
           )}
 
-          {/* Placeholder markers for other tabs */}
-          {tabId !== "latest-earthquake" && tabId !== "volcano-bulletin" && (
-            <Marker position={mapCenter}>
-              <Popup>
-                <div className="font-bold">{title}</div>
-                {tabId === "floods" && "Flood bulletin details will appear here."}
-                {tabId === "landslide" && "Landslide information will be shown here."}
-              </Popup>
-            </Marker>
-          )}
+          {/* No markers for floods and landslide - showing "Coming Soon" overlay instead */}
         </MapContainer>
       
         {/* Month/Year Filter for Earthquakes - Overlay on top of map */}
@@ -418,6 +390,30 @@ const Map = ({ tabId }: MapProps) => {
             </div>
           </div>
         )}
+        
+        {/* Coming Soon Overlay for Floods and Landslide */}
+        {(tabId === "floods" || tabId === "landslide") && (
+          <div className="absolute inset-0 flex items-center justify-center z-1000 pointer-events-none">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 max-w-md mx-4 pointer-events-auto border-2 border-gray-200">
+              <div className="text-center">
+                <div className="text-6xl mb-4">
+                  {tabId === "floods" ? "🌊" : "⛰️"}
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  {tabId === "floods" ? "Floods Bulletin" : "Landslide Information"}
+                </h2>
+                <div className="inline-block px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold mb-4">
+                  Coming Soon
+                </div>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {tabId === "floods" 
+                    ? "We're working on bringing you real-time flood bulletins and monitoring for the Philippines. Stay tuned for updates!"
+                    : "Landslide monitoring and alerts for the Philippines are currently under development. This feature will be available soon!"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Earthquake List Card */}
@@ -428,6 +424,7 @@ const Map = ({ tabId }: MapProps) => {
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
             onSelectEarthquake={handleEarthquakeSelect}
+            loading={loading}
           />
         </div>
       )}
@@ -439,6 +436,7 @@ const Map = ({ tabId }: MapProps) => {
             volcanoes={volcanoYearData}
             selectedYear={selectedVolcanoYear}
             onSelectVolcano={handleVolcanoSelect}
+            loading={volcanoLoading}
           />
         </div>
       )}
