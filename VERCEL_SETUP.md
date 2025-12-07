@@ -46,9 +46,13 @@ git push
 2. Import your GitHub repository
 3. Vercel will automatically:
    - Detect Next.js framework
-   - Detect Python files in `/api` directory
+   - Auto-detect Python files in `/api` directory (no vercel.json needed)
    - Install Python dependencies from `requirements.txt`
 4. Deploy! 🎉
+
+**Note**: Vercel should auto-detect Python files. If you get runtime errors, make sure:
+- Python file is at `/api/fetch-earthquakes.py` (root level, not in `app/api`)
+- `requirements.txt` is at the root of your project
 
 ### Step 3: Verify
 - Your app will automatically use the Python serverless function
