@@ -1,9 +1,3 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { join } from 'path';
-
-const execAsync = promisify(exec);
-
 type Quake = {
   datetime: string;
   lat: number;
@@ -26,100 +20,114 @@ export async function GET(request: Request) {
     );
     
     const currentYear = new Date().getFullYear();
-    
-    // If month and year specified, fetch only that month (fastest)
     const targetMonth = monthParam ? parseInt(monthParam, 10) : null;
     const targetYear = yearParam ? parseInt(yearParam, 10) : null;
     
     if (targetMonth && targetYear) {
-      console.log("📡 Fetching earthquakes from PHIVOLCS using pylindol");
+      console.log("📡 Fetching earthquakes from PHIVOLCS");
       console.log(`🗺️  Region: Philippines`);
       console.log(`📅  Fetching data for ${targetYear}-${targetMonth.toString().padStart(2, '0')} (single month)`);
     } else {
-      console.log("📡 Fetching earthquakes from PHIVOLCS using pylindol");
+      console.log("📡 Fetching earthquakes from PHIVOLCS");
       console.log(`🗺️  Region: Philippines`);
       console.log(`📅  Fetching ${yearsToFetch} year(s) of data (${currentYear - yearsToFetch + 1} - ${currentYear})`);
       console.log(`💡 Tip: Add ?month=X&year=YYYY to fetch specific month (faster)`);
     }
 
-    // Get the path to the Python script
-    const scriptPath = join(process.cwd(), 'scripts', 'fetch_earthquakes.py');
-    
-    // Set Python path to include pylindol installation location
-    // PYTHON_INSTALL_PATH should point to the Python installation directory
-    // Site-packages would be in a subdirectory (e.g., Lib/site-packages or site-packages)
-    // Note: The fallback path below is for local development only
-    // Set PYTHON_INSTALL_PATH environment variable for production deployments
-    const pythonPath = process.env.PYTHON_PATH || 'python';
-    // Use environment variable if set, otherwise fallback to local dev path
-    // For production, set PYTHON_INSTALL_PATH in environment variables
-    const pythonInstallPath = process.env.PYTHON_INSTALL_PATH || 
-      'C:\\Users\\Denise Valerie\\AppData\\Roaming\\Python\\Python312';
-    
-    // Set PYTHONPATH to include pylindol location (site-packages directory)
-    // Try common locations for site-packages
-    const possibleSitePackages = pythonInstallPath ? [
-      join(pythonInstallPath, 'site-packages'),
-      join(pythonInstallPath, 'Lib', 'site-packages'),
-      pythonInstallPath, // Fallback to the installation path itself
-    ] : [];
-    
-    const env = {
-      ...process.env,
-      PYTHONPATH: possibleSitePackages.length > 0 
-        ? `${possibleSitePackages.join(';')}${process.env.PYTHONPATH ? `;${process.env.PYTHONPATH}` : ''}`
-        : process.env.PYTHONPATH || '',
-      PATH: pythonInstallPath 
-        ? `${join(pythonInstallPath, 'Scripts')}${process.env.PATH ? `;${process.env.PATH}` : ''}`
-        : process.env.PATH || '',
-    };
-
-    console.log(`  🐍 Running Python script: ${scriptPath}`);
-    console.log(`  📦 Using Python from: ${pythonInstallPath}`);
-
-    // Build Python command with parameters
-    let pythonCmd = `"${pythonPath}" "${scriptPath}" ${yearsToFetch}`;
-    if (targetMonth && targetYear) {
-      pythonCmd = `"${pythonPath}" "${scriptPath}" 1 ${targetMonth} ${targetYear}`;
-    }
-    
-    // Execute the Python script
-    const { stdout, stderr } = await execAsync(
-      pythonCmd,
-      {
-        env,
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large responses
-        cwd: process.cwd(),
-      }
-    );
-
-    // Log any stderr output (warnings, debug info)
-    if (stderr) {
-      console.log("  ℹ️  Python stderr output:", stderr);
-    }
-    
-    // Also log a sample of stdout for debugging
-    if (stdout && stdout.length > 0) {
-      try {
-        const preview = stdout.substring(0, 500);
-        console.log("  📄 Python stdout preview:", preview);
-      } catch {
-        // Ignore
-      }
-    }
-
-    // Parse the JSON output from Python script
+    // Check if we're on Vercel - use Python serverless function
+    // Otherwise, use local Python script execution
+    const isVercel = process.env.VERCEL === '1';
     let result: { quakes: Quake[]; error?: string };
-    try {
-      result = JSON.parse(stdout);
-    } catch (parseErr) {
-      console.error("  ❌ Failed to parse Python script output:", parseErr);
-      console.error("  📄 Raw output:", stdout);
-      throw new Error("Failed to parse earthquake data from Python script");
+    
+    if (isVercel) {
+      // On Vercel: Call Python serverless function
+      console.log("  🚀 Using Vercel Python serverless function");
+      
+      // Build query string for Python function
+      const queryParams = new URLSearchParams();
+      queryParams.set('years', yearsToFetch.toString());
+      if (targetMonth) queryParams.set('month', targetMonth.toString());
+      if (targetYear) queryParams.set('year', targetYear.toString());
+      
+      // Get the base URL (Vercel provides VERCEL_URL)
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : request.url.split('/api')[0];
+      
+      const pythonFunctionUrl = `${baseUrl}/api/fetch-earthquakes?${queryParams.toString()}`;
+      console.log(`  🔗 Calling: ${pythonFunctionUrl}`);
+      
+      try {
+        const pythonResponse = await fetch(pythonFunctionUrl, {
+          headers: {
+            'User-Agent': 'Safe-PH-API',
+          },
+        });
+        
+        if (!pythonResponse.ok) {
+          throw new Error(`Python function returned ${pythonResponse.status}`);
+        }
+        
+        result = await pythonResponse.json();
+      } catch (fetchErr) {
+        console.error("  ❌ Error calling Python function:", fetchErr);
+        throw new Error(`Failed to call Python serverless function: ${String(fetchErr)}`);
+      }
+    } else {
+      // Local development: Execute Python script directly
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const { join } = await import('path');
+      const execAsync = promisify(exec);
+      
+      console.log("  🐍 Running Python script locally");
+      
+      const scriptPath = join(process.cwd(), 'scripts', 'fetch_earthquakes.py');
+      const pythonPath = process.env.PYTHON_PATH || 'python';
+      const pythonInstallPath = process.env.PYTHON_INSTALL_PATH || 
+        'C:\\Users\\Denise Valerie\\AppData\\Roaming\\Python\\Python312';
+      
+      const possibleSitePackages = pythonInstallPath ? [
+        join(pythonInstallPath, 'site-packages'),
+        join(pythonInstallPath, 'Lib', 'site-packages'),
+        pythonInstallPath,
+      ] : [];
+      
+      const env = {
+        ...process.env,
+        PYTHONPATH: possibleSitePackages.length > 0 
+          ? `${possibleSitePackages.join(';')}${process.env.PYTHONPATH ? `;${process.env.PYTHONPATH}` : ''}`
+          : process.env.PYTHONPATH || '',
+        PATH: pythonInstallPath 
+          ? `${join(pythonInstallPath, 'Scripts')}${process.env.PATH ? `;${process.env.PATH}` : ''}`
+          : process.env.PATH || '',
+      };
+
+      let pythonCmd = `"${pythonPath}" "${scriptPath}" ${yearsToFetch}`;
+      if (targetMonth && targetYear) {
+        pythonCmd = `"${pythonPath}" "${scriptPath}" 1 ${targetMonth} ${targetYear}`;
+      }
+      
+      const { stdout, stderr } = await execAsync(pythonCmd, {
+        env,
+        maxBuffer: 10 * 1024 * 1024,
+        cwd: process.cwd(),
+      });
+
+      if (stderr) {
+        console.log("  ℹ️  Python stderr output:", stderr);
+      }
+      
+      try {
+        result = JSON.parse(stdout);
+      } catch (parseErr) {
+        console.error("  ❌ Failed to parse Python script output:", parseErr);
+        throw new Error("Failed to parse earthquake data from Python script");
+      }
     }
 
     if (result.error) {
-      console.error("  ❌ Python script error:", result.error);
+      console.error("  ❌ Error:", result.error);
       throw new Error(result.error);
     }
 
